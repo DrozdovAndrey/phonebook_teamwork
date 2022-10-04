@@ -1,4 +1,6 @@
 # Андрей
+import csv
+
 def get_number_int(input_string: str) -> int:
     '''
     Проверка целого числа
@@ -7,7 +9,6 @@ def get_number_int(input_string: str) -> int:
         try:
             num = input(input_string)
             num = int(num)
-            num = str(num)
             return num
         except ValueError:
             print('Это не то ...')
@@ -36,8 +37,23 @@ def get_selection(input_string: str) -> int:
     while True:
         try:
             char = input(input_string)
-            if char in '12345':
+            if char in '1234567':
                 return int(char)
+            print('Не правильно!')
+            continue
+        except ValueError:
+            print('Это не то ...')
+
+def get_selection_contact(input_string:str, searched_list) ->str:
+    '''
+    Проверка пользовательского ввода для выбора контакта из поиска
+    '''            
+    while True:
+        try:
+            choice = int(input(input_string))
+            for key in searched_list:
+                if choice == key:
+                    return choice
             print('Не правильно!')
             continue
         except ValueError:
@@ -84,7 +100,7 @@ def get_surname(input_string: str) -> str:
             print('вы ввели слишком много символов')
 
         
-def get_phone_number(input_string: str) -> int:
+def get_phone_number(input_string: str) -> str:
     '''
     Проверка строки с номером телефона на числа и длинну номера
     '''
@@ -92,10 +108,10 @@ def get_phone_number(input_string: str) -> int:
     while True:
         try:
             num = input(input_string)
-            if len(num) < 11:
+            if len(num) < 12:
                 if len(num) != 0:
                     num = int(num)
-                    return num
+                    return str(num)
                 elif len(num) == 0:
                     print('Это поле должно быть заполнено')  
             else: 
@@ -115,4 +131,19 @@ def get_comment(input_string: str) -> str:
             else: 
                 print('вы ввели слишком много символов')
         
+
+def check_phone_number(num: str) -> bool:
+    '''
+    Проверка номера телефона на совпадение в базе
+    '''
+    path = 'data.csv'
+    with open(path, encoding='utf-8') as file:
+        reader = csv.reader(file, delimiter=' ')
+        for line in reader:
+            for i in line:    
+                if num in line:
+                    print('Контакт с таким номером уже существует!')
+                    return True
+                else:
+                    return False
 
