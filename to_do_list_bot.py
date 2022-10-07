@@ -1,10 +1,5 @@
-import telebot
-from datetime import datetime as dt
-import logging
-import operations as o
-from operations import read_csv, tasks
-from config import TOKEN
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from phonebook_bot import choice
+import config
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -12,8 +7,12 @@ from telegram.ext import (
     Filters,
     ConversationHandler,
 )
-import config
-from phonebook_bot import choice
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+import telebot
+from datetime import datetime as dt
+import logging
+from operations import *
+rom config import TOKEN
 bot = telebot.TeleBot(config.TOKEN)
 # Включим ведение журнала
 logging.basicConfig(
@@ -23,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 # Определяем константы этапов разговора
 
-START, MENU, EDIT, ADD, DELETE, VIEW, SEARCH, SEARCH_MENU, GET_TASK, GET_DATE, DATA, TIME = range(12)
+START, MENU, EDIT, ADD, DELETE, VIEW, SEARCH, SEARCH_MENU, GET_TASK, GET_DATE, DATA, TIME, RETASK = range(
+    13)
 
 
 TIME_NOW = dt.now().strftime('%D_%H:%M')
@@ -35,13 +35,13 @@ view_sticker = 'CAACAgIAAxkBAAEF_5xjPIvHVPz5lxKQwOxKrSCSivpBzQAC5woAAk0PCEn6k9uN
 
 
 def start(update, _):
-    reply_keyboard = [['👀 VIEW', '📝 ADD','🔎 SEARCH', '❌ DELETE', '✍ EDIT', 'EXIT']]
+    reply_keyboard = [
+        ['👀 VIEW', '📝 ADD', '🔎 SEARCH', '❌ DELETE', '✍ EDIT', 'EXIT']]
     markup_key = ReplyKeyboardMarkup(
         reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     # bot.send_sticker(update.message.chat.id, welcome)
     bot.send_message(update.effective_chat.id,
                      f'Здраствуйте мастер {update.effective_user.first_name}, я Альфред, ваш персональный помощник')
-
     update.message.reply_text(
         'Добро пожаловать в ToDoList. Чем займёмся? 🧐\n', reply_markup=markup_key)
     return MENU
@@ -64,7 +64,7 @@ def menu(update, _):
         return DELETE
     if choice == '✍ EDIT':
         update.message.reply_text("Найти задачу для редактирования: ")
-        return EDIT    
+        return EDIT
     if choice == 'EXIT':
         return cancel(update, _)
 
@@ -76,7 +76,7 @@ def view(update, _):
     bot.send_message(update.effective_chat.id,
                      f'Давайте-ка взглянем мастер {update.effective_user.first_name}')
     tasks = read_csv()
-    tasks_string = o.view_tasks(tasks)
+    tasks_string = view_tasks(tasks)
     update.message.reply_text(tasks_string)
     return start(update, _)
 
@@ -89,6 +89,7 @@ def add(update, context):
     update.message.reply_text("Введите дату в формате ДД/ММ/ГГ: ")
     return DATA
 
+
 def data(update, context):
     user = update.message.from_user
     logger.info("Task %s: %s", user.first_name, update.message.text)
@@ -97,6 +98,7 @@ def data(update, context):
     context.user_data['data'] = data
     update.message.reply_text("Введите время в формате ЧЧ:ММ ")
     return TIME
+
 
 def time(update, context):
     tasks = read_csv()
@@ -112,7 +114,7 @@ def time(update, context):
     task['Дата выполнения'] = data
     task['Задача'] = name
     tasks.append(task)
-    o.write_csv(tasks)
+    write_csv(tasks)
     return start(update, context)
 
 
@@ -121,15 +123,14 @@ def search(update, _):
     logger.info("Выбор поиска: %s: %s", user.first_name, update.message.text)
     searchstring = update.message.text
     tasks = read_csv()
-    tasks_filter = o.filter_task(user.first_name, tasks)
-    searched_tasks = o.search_task(searchstring, tasks_filter)
-    bot.send_message(update.effective_chat.id,
-                    f'{update.effective_user.first_name}, по вашему запросу <{searchstring}> найдено:')
-    tasks_string = o.view_tasks(searched_tasks)
-    update.message.reply_text(tasks_string)
+    if check_have_task(searchstring, tasks):
+        find = find_tasks(tasks, searchstring)
+        result = view_tasks(find)
+        update.message.reply_text(f'Было найдено {len(find)} задач')
+        update.message.reply_text(result)
+    else:
+        update.message.reply_text(f'Ничего не найдено')
     return start(update, _)
-
-    
 
 
 def delete(update, _):
@@ -137,23 +138,49 @@ def delete(update, _):
     user = update.message.from_user
     logger.info("Выбор удаления: %s: %s", user.first_name, update.message.text)
     searchstring = update.message.text
-    o.delete_task(searchstring, tasks)
-    update.message.reply_text('задача удалена')
-    o.write_csv(tasks)
+    if len(searchstring) >= 3:
+        if delete_task(searchstring, tasks):
+            update.message.reply_text('задача удалена')
+            write_csv(tasks)
+        else:
+            update.message.reply_text('Такой задачи нет')
+    else:
+        update.message.reply_text('Введите от трех букв')
     return start(update, _)
 
-    
-def edit(update, _):
+
+def edit(update, context):
     tasks = read_csv()
     user = update.message.from_user
-    logger.info("Выбор редактирования: %s: %s", user.first_name, update.message.text)
+    logger.info("Выбор редактирования: %s: %s",
+                user.first_name, update.message.text)
     searchstring = update.message.text
-    o.edit_task(searchstring, tasks)
-    update.message.reply_text('задача отредактирована')
-    o.write_csv(tasks)
-    return start(update, _)
+    if check_have_task(searchstring, tasks):
+        if len(searchstring) >= 3:
+            context.user_data['searchstring'] = searchstring
+            update.message.reply_text('Введите задачу: ')
+            return RETASK
+        else:
+            update.message.reply_text('Введите не менее трех букв для поиска')
+            return
+    else:
+        update.message.reply_text('Такой задачи нет')
+        return
 
 
+def retask(update, context):
+    tasks = read_csv()
+    retask = update.message.text
+    searchstring = context.user_data.get('searchstring')
+    if len(retask) >= 3:
+        edit_task(searchstring, tasks, retask)
+        write_csv(tasks)
+        update.message.reply_text('Задача изменена')
+    else:
+        update.message.reply_text(
+            'Введите не менее трех букв для новой задачи')
+        return
+    return start(update, context)
 
 
 def cancel(update, _):
@@ -191,6 +218,7 @@ if __name__ == '__main__':
             EDIT: [MessageHandler(Filters.text, edit)],
             DATA: [MessageHandler(Filters.text, data)],
             TIME: [MessageHandler(Filters.text, time)],
+            RETASK: [MessageHandler(Filters.text, retask)]
         },
         # точка выхода из разговора
         fallbacks=[CommandHandler('cancel', cancel)],
