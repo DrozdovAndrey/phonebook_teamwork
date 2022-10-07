@@ -19,8 +19,6 @@ tasks = []
 searched_tasks = []
 
  
-
-
 def add_task(key:str, value:str) -> None:
     '''
     добавить в список контакт
@@ -38,15 +36,6 @@ def search_task(searchstring: str, tasks:List):
                    searched_tasks.append(task)
     return searched_tasks        
 
-# def filter_task(searchstring_1: str, tasks:List):
-#     '''
-#     Поиск в телефонной книге
-#     '''
-#     for task in tasks:
-#         for value in task.values():
-#             if searchstring_1 in value:
-#                    filter_tasks.append(task)
-#     return filter_tasks
 
 def delete_task(searchstring, tasks: List) -> None:
     '''
