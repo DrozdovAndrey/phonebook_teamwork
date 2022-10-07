@@ -84,7 +84,9 @@ def view(update, _):
     bot.send_message(update.effective_chat.id,
                      f'Давайте-ка взглянем на список задач мастер {update.effective_user.first_name} ⬇⬇⬇')
     tasks = read_csv()
-    tasks_string = o.view_tasks(tasks)
+    user = update.message.from_user
+    tasks_filter = o.filter_task(user.first_name, tasks)
+    tasks_string = o.view_tasks(tasks_filter)
     update.message.reply_text(tasks_string)
     return show_menu(update, _)
 
@@ -100,10 +102,24 @@ def data(update, context):
     user = update.message.from_user
     logger.info("Task %s: %s", user.first_name, update.message.text)
     data = update.message.text
+
+    if len(data) == 8 and data[2] == '/' and data[5] == '/':
+        temp = data.replace('/', '')
+        if temp.isdigit():
+            data += '_'
+            context.user_data['data'] = data
+            update.message.reply_text("Введите время в формате ЧЧ:ММ ")
+            return TIME
+        else:
+            update.message.reply_text("Введите дату в формате ДД/ММ/ГГ: ")
+    else:
+        update.message.reply_text("Введите дату в формате ДД/ММ/ГГ: ")
+
     data += '_'
     context.user_data['data'] = data
     update.message.reply_text("Сэр, Введите время в формате ЧЧ:ММ ")
     return TIME
+
 
 def time(update, context):
     tasks = read_csv()
@@ -111,19 +127,23 @@ def time(update, context):
     user = update.message.from_user
     logger.info("Task %s: %s", user.first_name, update.message.text)
     time = update.message.text
-    data = context.user_data.get('data') + time
-    name = context.user_data.get('name')
-    task['Имя'] = user.first_name
-    task['Фамилия'] = user.last_name
-    task['Текущая дата'] = TIME_NOW
-    task['Дата выполнения'] = data
-    task['Задача'] = name
-    tasks.append(task)
-    o.write_csv(tasks)
-    bot.send_sticker(update.message.chat.id, st.complete)
-    bot.send_message(update.effective_chat.id,
-                    f'Мастер {update.effective_user.first_name}, задача успешно добавлена!:')
-    return show_menu(update, context)
+    if len(time) == 5 and time[2] == ':':
+        temp = time.replace(':', '')
+        if temp.isdigit():
+            data = context.user_data.get('data') + time
+            name = context.user_data.get('name')
+            task['Имя'] = user.first_name
+            task['Фамилия'] = user.last_name
+            task['Текущая дата'] = TIME_NOW
+            task['Дата выполнения'] = data
+            task['Задача'] = name
+            tasks.append(task)
+            o.write_csv(tasks)
+            return start(update, context)
+        else:
+            update.message.reply_text("Введите время в формате ЧЧ:ММ ")
+    else:
+        update.message.reply_text("Введите время в формате ЧЧ:ММ ")
 
 
 def search(update, _):
