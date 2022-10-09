@@ -24,12 +24,14 @@ logger = logging.getLogger(__name__)
 # Определяем константы этапов разговора
 
 
-START, SHOW_MENU, MENU, EDIT, ADD, DELETE, VIEW, SEARCH, SEARCH_MENU, GET_TASK, GET_DATE, DATA, TIME, RETASK = range(14)
+START, SHOW_MENU, MENU, EDIT, ADD, DELETE, VIEW, SEARCH, SEARCH_MENU, GET_TASK, GET_DATE, DATA, TIME, RETASK = range(
+    14)
 
 
 TIME_NOW = dt.now().strftime('%D_%H:%M')
 
 # функция обратного вызова точки входа в разговор
+
 
 def start(update, _):
     reply_keyboard = [['GO ➡']]
@@ -37,21 +39,25 @@ def start(update, _):
         reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     # bot.send_sticker(update.message.chat.id, welcome)
     # bot.send_message(update.effective_chat.id,
-                    #  f'Здраствуйте мастер {update.effective_user.first_name}, я Альфред, ваш персональный помощник')
+    #  f'Здраствуйте мастер {update.effective_user.first_name}, я Альфред, ваш персональный помощник')
     update.message.reply_text(
         'Добро пожаловать в ToDoList.', reply_markup=markup_key)
     return SHOW_MENU
 
+
 def main_menu():
     return MENU
 
+
 def show_menu(update, _):
-    reply_keyboard = [['👀 VIEW', '📝 ADD','🔎 SEARCH', '❌ DELETE', '✍ EDIT', '🚪 EXIT']]
+    reply_keyboard = [
+        ['👀 VIEW', '📝 ADD', '🔎 SEARCH', '❌ DELETE', '✍ EDIT', '🚪 EXIT']]
     markup_key = ReplyKeyboardMarkup(
         reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     # bot.send_sticker(update.message.chat.id, st.hello)
     update.message.reply_text('Чем займёмся, сэр? 🧐', reply_markup=markup_key)
     return MENU
+
 
 def menu(update, _):
     user = update.message.from_user
@@ -68,7 +74,7 @@ def menu(update, _):
         # bot.send_sticker(update.message.chat.id, st.listen)
         # bot.send_message(update.effective_chat.id,
         #              f'Что бы вы хотели найти, Мастер {update.effective_user.first_name}: ')
-        
+
     if choice == '❌ DELETE':
         update.message.reply_text("Найти задачу для удаления: ")
         return DELETE
@@ -90,13 +96,18 @@ def view(update, _):
     update.message.reply_text(tasks_string)
     return show_menu(update, _)
 
+
 def add(update, context):
     user = update.message.from_user
     logger.info("Task %s: %s", user.first_name, update.message.text)
     name = update.message.text
-    context.user_data['name'] = name
-    update.message.reply_text("Сэр, Введите дату в формате ДД/ММ/ГГ: ")
-    return DATA
+    if len(name) >= 3:
+        context.user_data['name'] = name
+        update.message.reply_text("Сэр, Введите дату в формате ДД/ММ/ГГ: ")
+        return DATA
+    else:
+        update.message.reply_text('Не менее 3 символов')
+        return
 
 
 def data(update, context):
@@ -160,7 +171,8 @@ def search(update, _):
     if check_have_task(searchstring, tasks):
         find = find_tasks(tasks, searchstring)
         result = view_tasks(find)
-        update.message.reply_text(f'fМастер {update.effective_user.first_name}, по вашему запросу <{searchstring}> найдено: ')
+        update.message.reply_text(
+            f'fМастер {update.effective_user.first_name}, по вашему запросу <{searchstring}> найдено: ')
         update.message.reply_text('🧐')
         update.message.reply_text(result)
     else:
@@ -202,7 +214,7 @@ def edit(update, context):
     else:
         update.message.reply_text('Такой задачи нет')
         return
-   
+
 
 def retask(update, context):
     tasks = read_csv()
